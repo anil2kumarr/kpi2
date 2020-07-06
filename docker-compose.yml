@@ -1,0 +1,72 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:9.6
+    container_name: postgresql-jira
+    volumes: 
+      - pg_data:/var/lib/postgresql/data
+    ports: 
+      - 5432:5432
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_USER=atlassian
+      - POSTGRES_PASSWORD=atlassian
+      - POSTGRES_DB=jiradb
+      - POSTGRES_ENCODING=UTF8
+      - POSTGRES_COLLATE=C
+      - POSTGRES_COLLATE_TYPE=C
+    networks:
+      - dockerkpi
+
+  jira:
+    image: atlassian/jira-software:8.5.0
+    container_name: jira
+    volumes: 
+      - jira_home:/var/atlassian/application-data/jira
+    ports: 
+      - 8081:8081
+    environment:
+      - TZ=Asia/Kuala_Lumpur 
+      - JVM_MINIMUM_MEMORY=512m
+      - JVM_MAXIMUM_MEMORY=2048m
+      - ATL_JDBC_URL=jdbc:postgresql://postgres-j:5432/jiradb
+      - ATL_JDBC_USER=atlassian
+      - ATL_JDBC_PASSWORD=atlassian
+      - ATL_DB_DRIVER=org.postgresql.Driver
+      - ATL_DB_TYPE=postgres72
+      - ATL_TOMCAT_PORT=8080
+      - ATL_TOMCAT_CONTEXTPATH=/jira
+    networks:
+      - dockernet1kpi
+    depends_on:
+      - postgres
+      
+  gitlab:
+    image: 'gitlab/gitlab-ce:latest'
+    restart: always
+    hostname: 'gitlab.example.com'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+      external_url 'https://gitlab.example.com'      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://localhost:80'
+        gitlab_rails['smtp_enable'] = true
+        gitlab_rails['smtp_address'] = "smtp.gmail.com"
+        gitlab_rails['smtp_port'] = 587
+        gitlab_rails['gitlab_shell_ssh_port'] = 3333
+        gitlab_rails['smtp_user_name'] = "user@gmail.com"
+        gitlab_rails['smtp_password'] = "app-password"
+        gitlab_rails['smtp_domain'] = "smtp.gmail.com"
+        gitlab_rails['smtp_authentication'] = "login"
+        gitlab_rails['smtp_enable_starttls_auto'] = true
+        gitlab_rails['smtp_tls'] = false
+        gitlab_rails['smtp_openssl_verify_mode'] = 'peer'
+
+    ports:
+      - '80:80'
+      - '443:443'
+      - '22:22'
+    volumes:
+      - '/srv/gitlab/config:/etc/gitlab'
+      - '/srv/gitlab/logs:/var/log/gitlab'
+      - '/srv/gitlab/data:/var/opt/gitlab'
